@@ -1,0 +1,2 @@
+train/n_updates,train/ent_coef_loss,time/time_elapsed,train/ent_coef,time/episodes,train/critic_loss,train/learning_rate,time/fps,time/total_timesteps,train/reward,train/actor_loss
+8055,265.2732238769531,78,0.21465450525283813,4,882279808.0,0.0001,103,8156,-161033.17,-8090.5712890625
