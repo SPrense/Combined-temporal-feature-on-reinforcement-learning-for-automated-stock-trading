@@ -45,6 +45,7 @@ class StockTradingEnv(gym.Env):
         model_name="",
         mode="",
         iteration="",
+        eta = 0.8,
     ):
         self.day = day
         self.df = df
@@ -74,6 +75,7 @@ class StockTradingEnv(gym.Env):
         self.model_name = model_name
         self.mode = mode
         self.iteration = iteration
+        self.eta = eta
         # initalize state
         self.state = self._initiate_state()
 
@@ -92,6 +94,8 @@ class StockTradingEnv(gym.Env):
             )
         ]  # the initial total asset is calculated by cash + sum (num_share_stock_i * price_stock_i)
         self.rewards_memory = []
+        self.A_memory = [0]
+        self.B_memory = [0]
         self.actions_memory = []
         self.state_memory = (
             []
@@ -172,9 +176,8 @@ class StockTradingEnv(gym.Env):
 
     def _buy_stock(self, index, action):
         def _do_buy():
-            if (
-                self.state[index + 2 * self.stock_dim + 1] != True
-            ):  # check if the stock is able to buy
+            if self.state[index + 1] > 0:
+                # check if the stock is able to buy
                 # if self.state[index + 1] >0:
                 # Buy only if the price is > 0 (no missing data in this particular date)
                 available_amount = self.state[0] // (
@@ -348,6 +351,16 @@ class StockTradingEnv(gym.Env):
             )
             self.asset_memory.append(end_total_asset)
             self.date_memory.append(self._get_date())
+            self.R = end_total_asset - begin_total_asset
+            self.A = self.A_memory[-1] + self.eta * (self.R - self.A_memory[-1])
+            self.B = self.B_memory[-1] + self.eta *(self.R**2 - self.B_memory[-1])
+            self.stand_devia = self.B_memory[-1] - self.A_memory[-1]**2
+            if self.stand_devia == 0:
+                self.stand_devia = 0  # 这种情况下 At-1和Bt-1 都为0 所以将diffsharpe也设置为0
+            else:
+                self.reward = (self.B_memory[-1] * (self.R - self.A_memory[-1]) - 0.5 * self.A_memory[-1] * (self.R**2 - self.B_memory[-1])) / self.stand_devia**1.5
+            self.A_memory.append(self.A)
+            self.B_memory.append(self.B)
             self.reward = end_total_asset - begin_total_asset
             self.rewards_memory.append(self.reward)
             self.reward = self.reward * self.reward_scaling
@@ -406,11 +419,11 @@ class StockTradingEnv(gym.Env):
                     + self.data.close.values.tolist()
                     + self.num_stock_shares
                     + sum(
-                        (
-                            self.data[tech].values.tolist()
-                            for tech in self.tech_indicator_list
-                        ),
-                        [],
+                    (
+                        self.data[tech].values.tolist()
+                        for tech in self.tech_indicator_list
+                    ),
+                    [],
                     )
                     + sum(
                         (
@@ -426,7 +439,6 @@ class StockTradingEnv(gym.Env):
                     [self.initial_amount]
                     + [self.data.close]
                     + [0] * self.stock_dim
-                    + sum(([self.data[tech]] for tech in self.tech_indicator_list), [])
                     + sum((self.data[attn] for attn in self.attn_embed_feature_list),[])
                 )
         else:
@@ -440,11 +452,11 @@ class StockTradingEnv(gym.Env):
                         (self.stock_dim + 1) : (self.stock_dim * 2 + 1)
                     ]
                     + sum(
-                        (
-                            self.data[tech].values.tolist()
-                            for tech in self.tech_indicator_list
-                        ),
-                        [],
+                    (
+                        self.data[tech].values.tolist()
+                        for tech in self.tech_indicator_list
+                    ),
+                    [],
                     )
                     + sum(
                         (
@@ -462,7 +474,6 @@ class StockTradingEnv(gym.Env):
                     + self.previous_state[
                         (self.stock_dim + 1) : (self.stock_dim * 2 + 1)
                     ]
-                    + sum(([self.data[tech]] for tech in self.tech_indicator_list), [])
                     + sum((self.data[attn] for attn in self.attn_embed_feature_list),[])
                 )
         return state
@@ -496,7 +507,6 @@ class StockTradingEnv(gym.Env):
                 [self.state[0]]
                 + [self.data.close]
                 + list(self.state[(self.stock_dim + 1) : (self.stock_dim * 2 + 1)])
-                + sum(([self.data[tech]] for tech in self.tech_indicator_list), [])
                 + sum((self.data[attn] for attn in self.attn_embed_feature_list),[])
             )
 
