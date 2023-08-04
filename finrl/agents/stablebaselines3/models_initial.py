@@ -674,7 +674,7 @@ class DRLEnsembleAgent:
                 name="ensemble",
                 last_state=last_state_ensemble,
                 iter_num=i,
-                turbulence_threshold=turbulence_threshold,
+                # turbulence_threshold=turbulence_threshold,
                 initial=initial,
             )
             ############## Trading ends ##############

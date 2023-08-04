@@ -351,17 +351,16 @@ class StockTradingEnv(gym.Env):
             )
             self.asset_memory.append(end_total_asset)
             self.date_memory.append(self._get_date())
-            self.R = end_total_asset - begin_total_asset
+            self.R = (end_total_asset - begin_total_asset)/begin_total_asset
             self.A = self.A_memory[-1] + self.eta * (self.R - self.A_memory[-1])
             self.B = self.B_memory[-1] + self.eta *(self.R**2 - self.B_memory[-1])
             self.stand_devia = self.B_memory[-1] - self.A_memory[-1]**2
             if self.stand_devia == 0:
-                self.stand_devia = 0  # 这种情况下 At-1和Bt-1 都为0 所以将diffsharpe也设置为0
+                self.reward = 0  # 这种情况下 At-1和Bt-1 都为0 所以将diffsharpe也设置为0
             else:
                 self.reward = (self.B_memory[-1] * (self.R - self.A_memory[-1]) - 0.5 * self.A_memory[-1] * (self.R**2 - self.B_memory[-1])) / self.stand_devia**1.5
             self.A_memory.append(self.A)
             self.B_memory.append(self.B)
-            self.reward = end_total_asset - begin_total_asset
             self.rewards_memory.append(self.reward)
             self.reward = self.reward * self.reward_scaling
             self.state_memory.append(
