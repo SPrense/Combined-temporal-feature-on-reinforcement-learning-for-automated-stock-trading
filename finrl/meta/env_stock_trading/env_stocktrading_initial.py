@@ -33,7 +33,7 @@ class StockTradingEnv(gym.Env):
         reward_scaling: float,
         state_space: int,
         action_space: int,
-        # attn_indicator_list: list,
+        attn_indicator_list: list,
         tech_indicator_list: list[str],
         turbulence_threshold=None,
         risk_indicator_col="turbulence",
@@ -58,7 +58,7 @@ class StockTradingEnv(gym.Env):
         self.reward_scaling = reward_scaling
         self.state_space = state_space
         self.action_space = action_space
-        # self.attn_embed_feature_list = attn_indicator_list
+        self.attn_embed_feature_list = attn_indicator_list
         self.tech_indicator_list = tech_indicator_list
         self.action_space = spaces.Box(low=-1, high=1, shape=(self.action_space,))
         self.observation_space = spaces.Box(
@@ -352,17 +352,17 @@ class StockTradingEnv(gym.Env):
             self.asset_memory.append(end_total_asset)
             self.date_memory.append(self._get_date())
             self.R = (end_total_asset - begin_total_asset)/begin_total_asset
-            self.A = self.A_memory[-1] + self.eta * (self.R - self.A_memory[-1])
-            self.B = self.B_memory[-1] + self.eta *(self.R**2 - self.B_memory[-1])
-            self.stand_devia = self.B_memory[-1] - self.A_memory[-1]**2
-            if self.stand_devia == 0:
-                self.reward = 0  # 这种情况下 At-1和Bt-1 都为0 所以将diffsharpe也设置为0
-            else:
-                self.reward = (self.B_memory[-1] * (self.R - self.A_memory[-1]) - 0.5 * self.A_memory[-1] * (self.R**2 - self.B_memory[-1])) / self.stand_devia**1.5
-            self.A_memory.append(self.A)
-            self.B_memory.append(self.B)
+            # self.A = self.A_memory[-1] + self.eta * (self.R - self.A_memory[-1])
+            # self.B = self.B_memory[-1] + self.eta *(self.R**2 - self.B_memory[-1])
+            # self.stand_devia = self.B_memory[-1] - self.A_memory[-1]**2
+            # if self.stand_devia == 0:
+            #     self.reward = 0  # 这种情况下 At-1和Bt-1 都为0 所以将diffsharpe也设置为0
+            # else:
+            #     self.reward = (self.B_memory[-1] * (self.R - self.A_memory[-1]) - 0.5 * self.A_memory[-1] * (self.R**2 - self.B_memory[-1])) / self.stand_devia**1.5
+            # self.A_memory.append(self.A)
+            # self.B_memory.append(self.B)
+            self.reward = self.R 
             self.rewards_memory.append(self.reward)
-            self.reward = self.reward * self.reward_scaling
             self.state_memory.append(
                 self.state
             )  # add current state in state_recorder for each step
@@ -424,6 +424,13 @@ class StockTradingEnv(gym.Env):
                     ),
                     [],
                 )
+                + sum(
+                        (
+                            self.data[attn].values.tolist()
+                            for attn in self.attn_embed_feature_list
+                        ),
+                        [],
+                    )
                 )  # append initial stocks_share to initial state, instead of all zero
             else:
                 # for single stock
@@ -438,6 +445,7 @@ class StockTradingEnv(gym.Env):
                     ),
                     [],
                     )
+                    
                 )
         else:
             # Using Previous State
@@ -456,6 +464,13 @@ class StockTradingEnv(gym.Env):
                     ),
                     [],
                     )
+                    + sum(
+                        (
+                            self.data[attn].values.tolist()
+                            for attn in self.attn_embed_feature_list
+                        ),
+                        [],
+                    )
                 )
             else:
                 # for single stock
@@ -465,6 +480,7 @@ class StockTradingEnv(gym.Env):
                     + self.previous_state[
                         (self.stock_dim + 1) : (self.stock_dim * 2 + 1)
                     ]
+                    + sum((self.data[attn] for attn in self.attn_embed_feature_list),[])
                 )
         return state
 
